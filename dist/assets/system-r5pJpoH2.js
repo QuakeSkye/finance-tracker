@@ -1,0 +1,1 @@
+import{h as s}from"./http-BBhYVBn3.js";const n={async getStatus(){const{data:t}=await s.get("/system/status");return t},async listEvents(t=20){const{data:a}=await s.get("/system/events",{params:{limit:t}});return a}};export{n as s};

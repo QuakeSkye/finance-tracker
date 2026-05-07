@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f6f4ed;
+  --ink: #131313;
+  --ink-soft: #444444;
+  --signal: #ef7f45;
+  --deep: #1f3a5f;
+  --mint: #6eb89e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: 'Avenir Next', 'Gill Sans', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(239, 127, 69, 0.22), transparent 38%),
+    radial-gradient(circle at 85% 15%, rgba(110, 184, 158, 0.22), transparent 30%),
+    linear-gradient(165deg, #f8f6f0, #f4efe3 45%, #eef3f6 100%);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.display-font {
+  font-family: 'Times New Roman', 'Georgia', serif;
+  letter-spacing: 0.02em;
+}
+
+.panel {
+  border: 1px solid rgba(19, 19, 19, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 60px rgba(19, 19, 19, 0.08);
+  backdrop-filter: blur(4px);
+  overflow: hidden;
+}
+
+.reveal {
+  animation: slideFade 0.6s ease both;
+}
+
+.reveal-2 {
+  animation: slideFade 0.6s ease 0.12s both;
+}
+
+.reveal-3 {
+  animation: slideFade 0.6s ease 0.24s both;
+}
+
+@keyframes slideFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
