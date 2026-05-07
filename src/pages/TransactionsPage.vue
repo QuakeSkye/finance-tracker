@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { useTransactionsStore } from '../stores/transactions'
 import { useCategoriesStore } from '../stores/categories'
-import type { Direction } from '../api/types'
+import type { Direction, Transaction } from '../api/types'
 
 const txStore = useTransactionsStore()
 const categoryStore = useCategoriesStore()
@@ -26,6 +26,18 @@ const dialogTitle = computed(() => (editingId.value ? '编辑流水' : '新增�
 function getCategoryById(id: number | null) {
   if (!id) return null
   return categoryStore.categories.find((c) => c.id === id) ?? null
+}
+
+function sortByDirection(a: Transaction, b: Transaction) {
+  return a.direction.localeCompare(b.direction)
+}
+
+function sortByAmount(a: Transaction, b: Transaction) {
+  return Number(a.amount) - Number(b.amount)
+}
+
+function sortByCategory(a: Transaction, b: Transaction) {
+  return (getCategoryById(a.category_id)?.name ?? '').localeCompare(getCategoryById(b.category_id)?.name ?? '')
 }
 
 function resetForm() {
@@ -58,7 +70,7 @@ function openCreate() {
   dialogOpen.value = true
 }
 
-function openEdit(row: { id: number; amount: string; direction: Direction; merchant_name: string; category_id: number | null; note: string | null }) {
+function openEdit(row: Transaction) {
   editingId.value = row.id
   form.amount = row.amount
   form.direction = row.direction
@@ -157,15 +169,15 @@ onMounted(async () => {
       <el-table :data="txStore.items" v-loading="txStore.loading" stripe height="calc(100vh - 380px)" :default-sort="{ prop: 'transaction_time', order: 'descending' }">
         <el-table-column prop="transaction_time" label="时间" min-width="180" sortable />
         <el-table-column prop="merchant_name" label="商家" min-width="160" sortable />
-        <el-table-column prop="direction" label="方向" width="100" sortable :sort-method="(a, b) => a.direction.localeCompare(b.direction)">
+        <el-table-column prop="direction" label="方向" width="100" sortable :sort-method="sortByDirection">
           <template #default="scope">
             <el-tag :type="scope.row.direction === 'expense' ? 'danger' : 'success'" size="small">
               {{ scope.row.direction === 'expense' ? '支出' : '收入' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额" width="130" sortable :sort-method="(a, b) => Number(a.amount) - Number(b.amount)" />
-        <el-table-column label="分类" width="140" sortable :sort-method="(a, b) => (getCategoryById(a.category_id)?.name ?? '').localeCompare(getCategoryById(b.category_id)?.name ?? '')">
+        <el-table-column prop="amount" label="金额" width="130" sortable :sort-method="sortByAmount" />
+        <el-table-column label="分类" width="140" sortable :sort-method="sortByCategory">
           <template #default="scope">
             <template v-if="getCategoryById(scope.row.category_id)">
               <el-tag :color="getCategoryById(scope.row.category_id)?.color ?? undefined" size="small" effect="dark" style="border: none;">
