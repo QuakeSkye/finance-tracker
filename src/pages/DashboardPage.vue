@@ -1,130 +1,61 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-
-import KpiCard from '../components/KpiCard.vue'
-import TrendChart from '../components/TrendChart.vue'
-import { useDashboardStore } from '../stores/dashboard'
-
-const store = useDashboardStore()
-
-const fmt = new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' })
-
-const todayAmountText = computed(() => fmt.format(store.todayAmount))
-const monthExpenseText = computed(() => fmt.format(store.monthExpense))
-const monthIncomeText = computed(() => fmt.format(store.monthIncome))
-
-function availabilityText(value: boolean | undefined) {
-  if (value === undefined) {
-    return '检测中'
-  }
-  return value ? '可用' : '不可用'
+import { computed, onMounted, ref } from 'vue'
+import { http } from '../api/http'
+import { ledgerApi, type LedgerUser } from '../api/ledger'
+import { errorText, userLabel } from '../utils/presentation'
+const users = ref<LedgerUser[]>([])
+const status = ref<{ failure_count: number; database_available: boolean } | null>(null)
+const error = ref(''), loading = ref(false)
+const pending = computed(() => users.value.filter(u => u.enabled && (!u.credential.configured || !u.token_prefix)))
+const failures = ref<Record<number, number | null>>({})
+async function load() {
+  loading.value = true; error.value = ''
+  try {
+    const [list, result] = await Promise.all([ledgerApi.list(), http.get('/system/status')])
+    users.value = list; status.value = result.data
+    failures.value = {}
+    await Promise.all(list.map(async u => {
+      try { failures.value[u.id] = (await ledgerApi.failures(u.id, {limit: 1})).total }
+      catch { failures.value[u.id] = null }
+    }))
+  } catch(e) { error.value = errorText(e, '首页加载失败，请重试') }
+  finally { loading.value = false }
 }
-
-function availabilityClass(value: boolean | undefined) {
-  if (value === undefined) {
-    return 'bg-zinc-100 text-zinc-600'
-  }
-  return value ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return '暂无'
-  }
-  return new Date(value).toLocaleString('zh-CN')
-}
-
-onMounted(() => {
-  void store.refresh()
-})
+onMounted(load)
 </script>
-
 <template>
-  <div class="grid gap-4">
-    <section class="panel p-5 md:p-7">
-      <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">每日概览</p>
-      <div class="mt-3 grid gap-3 md:grid-cols-2">
-        <h2 class="display-font text-3xl leading-tight md:text-4xl">
-          智能记账，
-          <span class="text-signal">让财务管理更轻松。</span>
-        </h2>
-        <p class="text-sm leading-7 text-zinc-600">
-          系统已全面接入后端接口：Watcher / OCR / Bark 状态、最近失败原因、待删除数量均实时展示。
-        </p>
+  <div class="grid gap-5">
+    <section class="panel p-5 md:p-6">
+      <div class="section-heading"><div><p class="text-sm text-zinc-500">iCost Adapter</p><h2 class="mt-2 text-2xl font-semibold">账单与日常管理</h2><p class="mt-2 text-sm text-zinc-500">查看各用户账单，处理识别异常，完成使用配置。</p></div><el-button :loading="loading" @click="load">刷新</el-button></div>
+      <el-alert v-if="error" :title="error" type="error" :closable="false" class="mb-4" />
+      <div class="grid gap-4 sm:grid-cols-3">
+        <RouterLink to="/bills" class="rounded-xl border border-zinc-200 p-5 hover:bg-zinc-50"><p class="text-sm text-zinc-500">独立账单空间</p><strong class="my-2 block text-3xl">{{ error || loading ? '—' : users.length }}</strong><span class="action-link">进入账单 →</span></RouterLink>
+        <a href="#home-failures" class="rounded-xl border border-zinc-200 p-5 hover:bg-zinc-50"><p class="text-sm text-zinc-500">近 30 天失败日志</p><strong class="my-2 block text-3xl">{{ error || loading ? '—' : status?.failure_count ?? '—' }}</strong><span class="text-sm text-zinc-500">查看对应用户的原因</span></a>
+        <RouterLink to="/users" class="rounded-xl border border-zinc-200 p-5 hover:bg-zinc-50"><p class="text-sm text-zinc-500">待完成凭据配置</p><strong class="my-2 block text-3xl">{{ error || loading ? '—' : pending.length }}</strong><span class="text-sm text-zinc-500">启用用户的 API Key / Token</span></RouterLink>
       </div>
     </section>
-
-    <section class="grid gap-3 overflow-x-auto md:grid-cols-2 xl:grid-cols-5">
-      <KpiCard label="今日入账数量" :value="String(store.todayCount)" hint="基于 transactions 实时计算" />
-      <KpiCard label="今日入账金额" :value="todayAmountText" />
-      <KpiCard label="本月支出" :value="monthExpenseText" />
-      <KpiCard label="本月收入" :value="monthIncomeText" />
-      <KpiCard label="待删除图片" :value="String(store.pendingDeleteCount)" hint="已进入 pending_confirm" />
+    <section class="panel p-5 md:p-6">
+      <div class="section-heading"><h2 class="text-lg font-semibold">各用户账单</h2><RouterLink to="/bills" class="action-link">全部账单空间 →</RouterLink></div>
+      <el-skeleton v-if="loading && !users.length" :rows="3" animated />
+      <div class="grid gap-4 md:grid-cols-2">
+        <RouterLink v-for="user in users" :key="user.id" :to="'/users/' + user.id + '/bills'" class="flex items-center justify-between rounded-lg border p-4 hover:bg-zinc-50"><div><h3 class="font-semibold">{{ userLabel(user) }}</h3><p class="mt-1 text-sm text-zinc-500">查看明细、按日期筛选、收支汇总</p></div><span aria-hidden="true">→</span></RouterLink>
+      </div>
+      <el-empty v-if="!loading && !error && !users.length" description="先创建用户，再开始记录账单" />
     </section>
-
-    <section class="grid gap-4 overflow-x-auto lg:grid-cols-[1.6fr_1fr]">
-      <article class="panel p-4 md:p-6">
-        <div class="mb-2 flex items-center justify-between">
-          <h3 class="text-sm font-bold uppercase tracking-[0.16em] text-zinc-500">近 7 日支出曲线</h3>
-          <span class="text-xs text-zinc-500">单位：CNY</span>
-        </div>
-        <TrendChart :labels="store.trendLabels" :values="store.trendExpenseSeries" />
-      </article>
-
-      <article class="panel p-4 md:p-6">
-        <h3 class="text-sm font-bold uppercase tracking-[0.16em] text-zinc-500">结构提醒</h3>
-        <div class="mt-4 grid gap-3">
-          <KpiCard label="未分类流水" :value="String(store.uncategorizedCount)" hint="建议进入分类管理补规则" />
-          <div class="rounded-xl border border-zinc-200 bg-white/70 p-4">
-            <p class="text-xs uppercase tracking-[0.16em] text-zinc-500">最近失败原因</p>
-            <p class="mt-2 text-sm text-zinc-700">
-              {{ store.recentFailureReason || '暂无失败记录' }}
-            </p>
-            <p class="mt-3 text-xs text-zinc-500">
-              最近成功时间：{{ formatDateTime(store.lastSuccessTime) }}
-            </p>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section class="grid gap-4 overflow-x-auto lg:grid-cols-[1.5fr_1fr]">
-      <article class="panel p-4 md:p-6">
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-sm font-bold uppercase tracking-[0.16em] text-zinc-500">最近流水</h3>
-          <RouterLink to="/transactions" class="text-xs font-semibold text-deep">查看全部</RouterLink>
-        </div>
-        <el-table :data="store.recentTransactions" stripe height="300">
-          <el-table-column prop="transaction_time" label="时间" min-width="150" />
-          <el-table-column prop="merchant_name" label="商家" min-width="150" />
-          <el-table-column prop="direction" label="方向" width="90" />
-          <el-table-column prop="amount" label="金额" width="120" />
-        </el-table>
-      </article>
-
-      <article class="grid gap-3">
-        <div class="panel p-4">
-          <p class="text-sm font-semibold text-zinc-700">Watcher 可用性</p>
-          <span class="mt-2 inline-block rounded-full px-2 py-1 text-xs font-semibold" :class="availabilityClass(store.watcherStatus?.available)">
-            {{ availabilityText(store.watcherStatus?.available) }}
-          </span>
-          <p class="mt-2 text-xs text-zinc-500">{{ store.watcherStatus?.message || '检测中' }}</p>
-        </div>
-        <div class="panel p-4">
-          <p class="text-sm font-semibold text-zinc-700">OCR 可用性</p>
-          <span class="mt-2 inline-block rounded-full px-2 py-1 text-xs font-semibold" :class="availabilityClass(store.ocrStatus?.available)">
-            {{ availabilityText(store.ocrStatus?.available) }}
-          </span>
-          <p class="mt-2 text-xs text-zinc-500">{{ store.ocrStatus?.message || '检测中' }}</p>
-        </div>
-        <div class="panel p-4">
-          <p class="text-sm font-semibold text-zinc-700">Bark 可用性</p>
-          <span class="mt-2 inline-block rounded-full px-2 py-1 text-xs font-semibold" :class="availabilityClass(store.barkStatus?.available)">
-            {{ availabilityText(store.barkStatus?.available) }}
-          </span>
-          <p class="mt-2 text-xs text-zinc-500">{{ store.barkStatus?.message || '检测中' }}</p>
-        </div>
-      </article>
-    </section>
+    <div class="grid gap-5 lg:grid-cols-2">
+      <section id="home-failures" class="panel p-5 md:p-6">
+        <h2 class="mb-4 text-lg font-semibold">识别异常</h2>
+        <p class="mb-3 text-sm text-zinc-500">失败不代表待复核，用户需在 iCost 中手动添加。日志仅用于排错。</p>
+        <div v-for="user in users" :key="user.id" class="flex items-center justify-between border-b py-3 last:border-0"><span>{{ userLabel(user) }}</span><RouterLink :to="'/users/' + user.id + '/recognition-records'" class="action-link">{{ failures[user.id] == null ? '查看日志' : failures[user.id] + ' 条失败日志' }} →</RouterLink></div>
+      </section>
+      <section class="panel p-5 md:p-6">
+        <h2 class="mb-4 text-lg font-semibold">配置提醒</h2>
+        <div v-for="user in pending" :key="user.id" class="mb-3 rounded-lg bg-amber-50 p-3"><strong class="text-sm">{{ userLabel(user) }}</strong><p class="mt-1 text-sm">{{ [!user.credential.configured ? '未配置 DeepSeek Key' : '', !user.token_prefix ? '未签发 Token' : ''].filter(Boolean).join(' · ') }}</p></div>
+        <p v-if="!pending.length && !loading && !error" class="mb-3 text-sm text-zinc-600">启用用户的 Key 与 Token 均已配置。</p>
+        <p class="mb-4 text-xs text-zinc-500">这里只检查凭据是否配置，不代表模型调用成功；分类、账户与账本仍需对应手机设置。</p>
+        <RouterLink to="/users" class="action-link">管理用户与配置 →</RouterLink>
+      </section>
+    </div>
+    <p class="text-xs text-zinc-500">数据库：{{ error ? '未知' : status === null ? '加载中' : status.database_available ? '已连接' : '连接异常' }} · 成功账单保留，截图与识别原文不保存。实际入账结果以手机 iCost 为准。</p>
   </div>
 </template>

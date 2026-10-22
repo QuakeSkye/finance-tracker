@@ -1,0 +1,1 @@
+<template><section class="panel p-6"><h2 class="text-xl font-bold">复核及成功记录功能已移除</h2><p class="my-4 text-zinc-500">成功识别不保存。请从用户管理进入“识别失败”，查看最近 30 天的失败信息。识别失败的账单请在 iCost 中手动添加。</p><RouterLink to="/users"><el-button type="primary">进入用户管理</el-button></RouterLink></section></template>
