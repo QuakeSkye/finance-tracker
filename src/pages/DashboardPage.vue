@@ -6,7 +6,7 @@ import { errorText, userLabel } from '../utils/presentation'
 const users = ref<LedgerUser[]>([])
 const status = ref<{ failure_count: number; database_available: boolean } | null>(null)
 const error = ref(''), loading = ref(false)
-const pending = computed(() => users.value.filter(u => u.enabled && (!u.credential.configured || !u.token_prefix)))
+const pending = computed(() => users.value.filter(u => u.enabled && ((u.image_provider !== 'local_ollama' && !u.credential.configured) || !u.token_prefix)))
 const failures = ref<Record<number, number | null>>({})
 async function load() {
   loading.value = true; error.value = ''
@@ -50,7 +50,7 @@ onMounted(load)
       </section>
       <section class="panel p-5 md:p-6">
         <h2 class="mb-4 text-lg font-semibold">配置提醒</h2>
-        <div v-for="user in pending" :key="user.id" class="mb-3 rounded-lg bg-amber-50 p-3"><strong class="text-sm">{{ userLabel(user) }}</strong><p class="mt-1 text-sm">{{ [!user.credential.configured ? '未配置 DeepSeek Key' : '', !user.token_prefix ? '未签发 Token' : ''].filter(Boolean).join(' · ') }}</p></div>
+        <div v-for="user in pending" :key="user.id" class="mb-3 rounded-lg bg-amber-50 p-3"><strong class="text-sm">{{ userLabel(user) }}</strong><p class="mt-1 text-sm">{{ [user.image_provider !== 'local_ollama' && !user.credential.configured ? '未配置 DeepSeek Key' : '', !user.token_prefix ? '未签发 Token' : ''].filter(Boolean).join(' · ') }}</p></div>
         <p v-if="!pending.length && !loading && !error" class="mb-3 text-sm text-zinc-600">启用用户的 Key 与 Token 均已配置。</p>
         <p class="mb-4 text-xs text-zinc-500">这里只检查凭据是否配置，不代表模型调用成功；分类、账户与账本仍需对应手机设置。</p>
         <RouterLink to="/users" class="action-link">管理用户与配置 →</RouterLink>

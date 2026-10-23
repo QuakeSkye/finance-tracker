@@ -3,6 +3,7 @@ import axios, { AxiosError } from 'axios'
 const apiBaseURL = '/api/v1'
 
 const messages: Record<string, string> = {
+  LOCAL_ENGINE_DISABLED: '本地 Ollama 已关闭，请先在系统设置中启用。',
   ADMIN_AUTH_REQUIRED: '登录状态已失效，请重新登录。',
   RECORD_NOT_FOUND: '记录不存在、已到期或不属于当前用户。',
   LEDGER_USER_NOT_FOUND: '用户不存在或无访问权限。',

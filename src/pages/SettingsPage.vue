@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import ImageEngineSettings from '../components/ImageEngineSettings.vue'
 import { http } from '../api/http'
 import { authApi } from '../api/auth'
 import { errorText } from '../utils/presentation'
@@ -43,14 +44,15 @@ onMounted(load)
 </script>
 <template>
   <div class="grid gap-4">
+    <ImageEngineSettings />
     <section class="panel p-4 md:p-5">
       <div class="section-heading"><h2 class="text-lg font-semibold">运行配置</h2><el-button :loading="loading" @click="load">刷新</el-button></div>
       <el-alert v-if="settingsError" :title="settingsError" type="error" :closable="false" show-icon class="mb-4"><el-button text @click="load">重新加载</el-button></el-alert>
       <el-descriptions border :column="1">
-        <el-descriptions-item label="识别引擎">DeepSeek · {{ settings?.model || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="识别引擎">按用户选择引擎；DeepSeek · {{ settings?.model || '—' }}</el-descriptions-item>
         <el-descriptions-item label="上传大小限制">{{ settings ? settings.upload_max_size_bytes / 1024 / 1024 : '—' }} MB</el-descriptions-item>
         <el-descriptions-item label="数据保留">保存结构化账单用于统计；不保存图片、识别原文和成功运行日志；失败日志保留 30 天。</el-descriptions-item>
-        <el-descriptions-item label="本地识别引擎">未启用</el-descriptions-item>
+        <el-descriptions-item label="本地识别引擎">见上方配置及用户引擎选择</el-descriptions-item>
         <el-descriptions-item label="调用次数限制">不设置次数配额</el-descriptions-item>
         <el-descriptions-item label="用户凭证"><RouterLink to="/users">进入用户管理配置 API Key 和 Token</RouterLink></el-descriptions-item>
       </el-descriptions>

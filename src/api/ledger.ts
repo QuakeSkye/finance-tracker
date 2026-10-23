@@ -4,6 +4,7 @@ export interface LedgerUser {
   id: number
   display_name: string
   enabled: boolean
+  image_provider: 'deepseek' | 'local_ollama'
   token_prefix: string | null
   credential: { configured: boolean; masked: string | null; status: string; updated_at: string | null }
 }
@@ -20,6 +21,7 @@ export interface Failure {
   latency_ms: number | null
 }
 export const ledgerApi = {
+  async selectEngine(id: number, provider: string) { await http.put(`/ledger-users/${id}/image-engine`, { provider }) },
   async list() { return (await http.get<{ items: LedgerUser[] }>('/ledger-users')).data.items },
   async get(id: number) { return (await http.get<LedgerUser>(`/ledger-users/${id}`)).data },
   async create(display_name: string) { return (await http.post<LedgerUser>('/ledger-users', { display_name })).data },

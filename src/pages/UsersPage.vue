@@ -37,6 +37,12 @@ async function perform(action: () => Promise<void>) {
   catch (e) { if (!isDismissed(e)) error.value = errorText(e, '操作失败，请重试。') }
   finally { busy.value = false }
 }
+async function changeEngine(user: LedgerUser, provider: string) {
+  await perform(async () => {
+    await ledgerApi.selectEngine(user.id, provider)
+    ElMessage.success('此用户的识别引擎已切换')
+  })
+}
 async function create() {
   if (!newName.value.trim() || loading.value) return
   await perform(async () => {
@@ -181,6 +187,7 @@ onBeforeUnmount(() => {
           <el-tag :type="user.enabled ? 'success' : 'info'">{{ user.enabled ? '已启用' : '已停用' }}</el-tag>
         </div>
         <dl class="user-credentials">
+          <dt>图片识别引擎</dt><dd><el-select :model-value="user.image_provider || 'deepseek'" :disabled="busy || loading" style="width: 190px" @change="changeEngine(user, $event)"><el-option label="DeepSeek（独立 Key）" value="deepseek" /><el-option label="本地 Ollama" value="local_ollama" /></el-select> <RouterLink to="/settings" class="action-link">本地引擎配置</RouterLink></dd>
           <dt>DeepSeek API Key</dt><dd>{{ user.credential.configured ? '已配置，未验证' : '未配置' }} <span class="font-mono">{{ user.credential.masked || '' }}</span></dd>
           <dt>快捷指令 Token</dt><dd class="font-mono">{{ user.token_prefix || '未签发' }}</dd>
         </dl>
